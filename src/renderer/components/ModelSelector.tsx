@@ -40,18 +40,13 @@ export function ModelSelector({ value, onChange, onBusyChange }: ModelSelectorPr
     }
   }, [onChange])
 
-  async function handleChange(model: string) {
+  async function downloadModel(model: string, previous: string) {
     const selected = models.find(item => item.name === model)
-    const previous = selectedModel
+    if (!selected || selected.installed || busy) return
+
     setError('')
     setSelectedModel(model)
     onChange(model)
-
-    if (!selected || selected.installed) {
-      saveSelectedModel(model)
-      return
-    }
-
     setBusy(true)
     onBusyChange?.(true)
     setProgress(null)
@@ -71,6 +66,19 @@ export function ModelSelector({ value, onChange, onBusyChange }: ModelSelectorPr
     }
   }
 
+  function handleChange(model: string) {
+    const selected = models.find(item => item.name === model)
+    if (!selected || selected.installed) {
+      setError('')
+      setSelectedModel(model)
+      onChange(model)
+      saveSelectedModel(model)
+      return
+    }
+    void downloadModel(model, selectedModel)
+  }
+
+  const selectedInfo = models.find(model => model.name === selectedModel)
   const percentage = progress?.completed != null && progress.total
     ? Math.min(100, Math.round((progress.completed / progress.total) * 100))
     : 0
@@ -94,10 +102,28 @@ export function ModelSelector({ value, onChange, onBusyChange }: ModelSelectorPr
           </option>
         ))}
       </select>
+      {selectedInfo && (
+        <p className="helper" aria-live="polite">
+          <strong>{selectedInfo.installed ? 'Installed' : 'Not installed'}</strong>
+          {selectedInfo.recommended ? ' · Recommended by FireForm' : ''}
+        </p>
+      )}
+      {selectedInfo && !selectedInfo.installed && !busy && (
+        <button
+          type="button"
+          className="secondary-btn"
+          onClick={() => void downloadModel(selectedInfo.name, selectedModel)}
+        >
+          Download {selectedInfo.name}
+        </button>
+      )}
       {busy && (
         <div aria-live="polite">
           <progress value={percentage} max={100} />
-          <span>{progress?.status || 'Downloading model…'}{progress?.total ? ` (${percentage}%)` : ''}</span>
+          <p className="helper">
+            {progress?.status || 'Downloading model…'}
+            {progress?.total ? ` (${percentage}%)` : ''}
+          </p>
         </div>
       )}
       {error && <p className="status error" role="alert">{error}</p>}
