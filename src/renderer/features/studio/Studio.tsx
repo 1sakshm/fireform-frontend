@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useStore } from '../../store'
-import type { Template } from '../../types'
+import type { FieldRow, Template } from '../../types'
 import { DocumentViewer } from './DocumentViewer'
 import { StudioSidebar } from './StudioSidebar'
 import { useFieldRows } from '../template-builder/hooks'
@@ -61,7 +61,23 @@ export function Studio() {
   const [isZipcodeOpen, setIsZipcodeOpen] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'info' | 'success' | 'error' } | null>(null)
 
-  const { fieldRows, addRow, removeRow, updateRow, seedFromApiFields, resetRows } = useFieldRows()
+  const { fieldRows, seedFromApiFields, resetRows, ...rowEdits } = useFieldRows()
+  // Studio's flat {label: type} dict is lossy (it drops the extracted schema/tables and merges
+  // duplicate labels), so fields are only sent once the user has edited the rows; otherwise
+  // the backend extracts (create) or keeps (update) the PDF's own schema.
+  const fieldsEditedRef = useRef(false)
+  const addRow = () => {
+    fieldsEditedRef.current = true
+    rowEdits.addRow()
+  }
+  const removeRow = (index: number) => {
+    fieldsEditedRef.current = true
+    rowEdits.removeRow(index)
+  }
+  const updateRow = (index: number, updates: Partial<FieldRow>) => {
+    fieldsEditedRef.current = true
+    rowEdits.updateRow(index, updates)
+  }
 
   // Hook for voice transcription
   const { sttState, sttStatus, start: startRecording, stop: stopRecording } = useSpeechRecording(transcript => {
@@ -122,6 +138,7 @@ export function Studio() {
         }
       }
       setSelectedFile(null)
+      fieldsEditedRef.current = false
       seededTemplateIdRef.current = activeTemplate.id
     } else if (!activeTemplate && seededTemplateIdRef.current !== null) {
       // Switched to "New Template": clear the previous template's data
@@ -129,6 +146,7 @@ export function Studio() {
       setUploadedPdfPath(null)
       resetRows()
       setSelectedFile(null)
+      fieldsEditedRef.current = false
       seededTemplateIdRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -145,7 +163,19 @@ export function Studio() {
       const res: any = await uploadTemplatePdf(file, DEFAULT_TEMPLATE_DIRECTORY)
       const path = typeof res?.pdf_path === 'string' ? res.pdf_path : ''
       setUploadedPdfPath(path)
-      setStatusMessage({ text: `Uploaded ${file.name}`, type: 'success' })
+      // Seed the field list from the fillable fields the backend extracted
+      const fields = Array.isArray(res?.fields) ? res.fields : []
+      const seeded = fields.length > 0 ? seedFromApiFields(fields) : null
+      if (seeded === 'seeded') fieldsEditedRef.current = false
+      const detail =
+        seeded === 'seeded'
+          ? ` — loaded ${fields.length} field${fields.length === 1 ? '' : 's'} from the PDF`
+          : seeded === 'kept'
+            ? ' — kept your existing fields'
+            : res?.field_count === 0
+              ? ' — no fillable fields found; try AI Schema'
+              : ''
+      setStatusMessage({ text: `Uploaded ${file.name}${detail}`, type: 'success' })
     } catch (err: any) {
       setStatusMessage({ text: `Upload failed: ${err.message}`, type: 'error' })
     }
@@ -159,7 +189,7 @@ export function Studio() {
     }
 
     setIsMakeFillableLoading(true)
-    setStatusMessage({ text: 'Extracting fields and generating schema with AI...', type: 'info' })
+    setStatusMessage({ text: 'Detecting form fields and creating a fillable PDF (this can take a minute)...', type: 'info' })
     try {
       let path = uploadedPdfPath
       if (!path && selectedFile) {
@@ -170,14 +200,16 @@ export function Studio() {
 
       if (!path) throw new Error('No PDF path available.')
 
+      // Backend returns { pdf_path, field_count } for the fillable copy; failures are errors
+      // (MAKE_FILLABLE_FAILED) and land in the catch below.
       const res: any = await makeFillable(path)
-      const fieldsList = Array.isArray(res?.fields) ? res.fields : []
-      if (fieldsList.length > 0) {
-        seedFromApiFields(fieldsList)
-        setStatusMessage({ text: `AI extracted ${fieldsList.length} fields.`, type: 'success' })
-      } else {
-        setStatusMessage({ text: 'AI analysis completed.', type: 'info' })
-      }
+      const count = typeof res?.field_count === 'number' ? res.field_count : null
+      setUploadedPdfPath(typeof res?.pdf_path === 'string' && res.pdf_path ? res.pdf_path : path)
+      // Drop the original upload's rows; with no fields sent, Register extracts them from the fillable PDF
+      seedFromApiFields([], false)
+      fieldsEditedRef.current = false
+      const countText = count !== null ? ` with ${count} field${count === 1 ? '' : 's'} detected` : ''
+      setStatusMessage({ text: `Fillable PDF created${countText}. Its fields are read from the PDF when you register.`, type: 'success' })
     } catch (err: any) {
       setStatusMessage({ text: `Extraction failed: ${err.message}`, type: 'error' })
     } finally {
@@ -199,8 +231,9 @@ export function Studio() {
     setIsRegistering(true)
     setStatusMessage({ text: 'Registering template in database...', type: 'info' })
     try {
+      // Empty fields ({}) let the backend extract the PDF's schema; see fieldsEditedRef
       const fieldsDict: Record<string, string> = {}
-      fieldRows.forEach(f => {
+      if (fieldsEditedRef.current) fieldRows.forEach(f => {
         if (f.name.trim()) fieldsDict[f.name.trim()] = f.type || 'string'
       })
 
