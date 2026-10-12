@@ -50,6 +50,27 @@ export async function waitForBackend(): Promise<void> {
   }
 }
 
+export type BackendStatus = 'connected' | 'degraded' | 'disconnected'
+
+// GET /health: 200 = healthy/degraded, 503 = unhealthy (database down).
+export async function fetchBackendStatus(): Promise<{ status: BackendStatus; detail: string }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/health`, { signal: AbortSignal.timeout(10000) })
+    const body = (await parseJsonResponse(response)) as Record<string, unknown>
+    const components = (body['components'] || {}) as Record<string, { status?: string }>
+    const down = Object.entries(components)
+      .filter(([, c]) => c?.status && c.status !== 'healthy')
+      .map(([name, c]) => `${name}: ${c.status}`)
+      .join(', ')
+    if (!response.ok) return { status: 'disconnected', detail: down || `Backend returned ${response.status}` }
+    return body['status'] === 'degraded'
+      ? { status: 'degraded', detail: down }
+      : { status: 'connected', detail: 'All backend services healthy' }
+  } catch {
+    return { status: 'disconnected', detail: 'Backend not reachable at 127.0.0.1:8000' }
+  }
+}
+
 export async function fetchTemplates(): Promise<Template[]> {
   const response = await fetch(`${API_BASE_URL}/templates`)
   const body = await parseJsonResponse(response)

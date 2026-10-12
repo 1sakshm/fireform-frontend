@@ -6,7 +6,8 @@ import {
   Flame,
 } from 'lucide-react'
 import { useStore } from './store'
-import { waitForBackend, fetchTemplates } from './lib/api'
+import { waitForBackend, fetchTemplates, fetchBackendStatus } from './lib/api'
+import type { BackendStatus } from './lib/api'
 import { Studio } from './features/studio/Studio'
 import { TemplatesList } from './features/templates-list/TemplatesList'
 import { LoadingScreen } from './components/LoadingScreen'
@@ -29,6 +30,10 @@ export function App() {
   }))
 
   const [ready, setReady] = useState(false)
+  const [backend, setBackend] = useState<{ status: BackendStatus; detail: string }>({
+    status: 'connected',
+    detail: '',
+  })
 
   useEffect(() => {
     waitForBackend().then(async () => {
@@ -41,6 +46,24 @@ export function App() {
       }
     })
   }, [])
+
+  // Poll backend health so the header pill reflects reality.
+  useEffect(() => {
+    if (!ready) return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout>
+    const poll = async () => {
+      const next = await fetchBackendStatus()
+      if (cancelled) return
+      setBackend(next)
+      timer = setTimeout(poll, 5000)
+    }
+    poll()
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [ready])
 
   if (!ready) return <LoadingScreen />
 
@@ -85,9 +108,26 @@ export function App() {
 
         {/* Right: Live Connection Status Pill (Photo 2 style: ● Saved · v1) */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Connected</span>
+          <div
+            title={backend.detail}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-medium',
+              backend.status === 'connected' && 'bg-emerald-50 border-emerald-200 text-emerald-800',
+              backend.status === 'degraded' && 'bg-amber-50 border-amber-200 text-amber-800',
+              backend.status === 'disconnected' && 'bg-red-50 border-red-200 text-red-700'
+            )}
+          >
+            <span
+              className={cn(
+                'w-1.5 h-1.5 rounded-full',
+                backend.status === 'connected' && 'bg-emerald-500 animate-pulse',
+                backend.status === 'degraded' && 'bg-amber-500',
+                backend.status === 'disconnected' && 'bg-red-500'
+              )}
+            />
+            <span>
+              {backend.status === 'connected' ? 'Connected' : backend.status === 'degraded' ? 'Degraded' : 'Disconnected'}
+            </span>
           </div>
 
           <div className="text-[11px] font-mono text-zinc-400">
