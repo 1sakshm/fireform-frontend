@@ -8,6 +8,7 @@ import { useSpeechRecording } from '../fill-form/hooks'
 import {
   uploadTemplatePdf,
   createTemplate,
+  updateTemplate,
   makeFillable,
   fetchTemplates,
   fetchModels,
@@ -118,6 +119,8 @@ export function Studio() {
 
   // Re-seed whenever a different template becomes active (not only on first load)
   const seededTemplateIdRef = useRef<number | null>(null)
+  // PUT can't replace a template's PDF, so Save is blocked after an upload / AI Schema
+  const pdfChangedRef = useRef(false)
   useEffect(() => {
     if (activeTemplate && activeTemplate.id !== seededTemplateIdRef.current) {
       setTemplateName(activeTemplate.name)
@@ -140,6 +143,7 @@ export function Studio() {
       }
       setSelectedFile(null)
       fieldsEditedRef.current = false
+      pdfChangedRef.current = false
       seededTemplateIdRef.current = activeTemplate.id
     } else if (!activeTemplate && seededTemplateIdRef.current !== null) {
       // Switched to "New Template": clear the previous template's data
@@ -148,6 +152,7 @@ export function Studio() {
       resetRows()
       setSelectedFile(null)
       fieldsEditedRef.current = false
+      pdfChangedRef.current = false
       seededTemplateIdRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,6 +169,7 @@ export function Studio() {
       const res: any = await uploadTemplatePdf(file, DEFAULT_TEMPLATE_DIRECTORY)
       const path = typeof res?.pdf_path === 'string' ? res.pdf_path : ''
       setUploadedPdfPath(path)
+      pdfChangedRef.current = true
       // Seed the field list from the fillable fields the backend extracted
       const fields = Array.isArray(res?.fields) ? res.fields : []
       const seeded = fields.length > 0 ? seedFromApiFields(fields) : null
@@ -209,6 +215,7 @@ export function Studio() {
       // Drop the original upload's rows; with no fields sent, Register extracts them from the fillable PDF
       seedFromApiFields([], false)
       fieldsEditedRef.current = false
+      pdfChangedRef.current = true
       const countText = count !== null ? ` with ${count} field${count === 1 ? '' : 's'} detected` : ''
       setStatusMessage({ text: `Fillable PDF created${countText}. Its fields are read from the PDF when you register.`, type: 'success' })
     } catch (err: any) {
@@ -260,6 +267,51 @@ export function Studio() {
       fetchTemplates().then(setTemplates)
     } catch (err: any) {
       setStatusMessage({ text: `Registration failed: ${err.message}`, type: 'error' })
+    } finally {
+      setIsRegistering(false)
+    }
+  }
+
+  // Save edits to the active (existing) template instead of registering a duplicate
+  const handleSaveTemplate = async () => {
+    if (!activeTemplate) return
+    if (!templateName.trim()) {
+      setStatusMessage({ text: 'Please provide a template name.', type: 'error' })
+      return
+    }
+    if (pdfChangedRef.current) {
+      setStatusMessage({
+        text: 'The PDF changed. Save Changes can only update the name and fields; register it as a new template (Templates → New Template) instead.',
+        type: 'error',
+      })
+      return
+    }
+
+    setIsRegistering(true)
+    setStatusMessage({ text: 'Saving template changes...', type: 'info' })
+    try {
+      const fieldsDict: Record<string, string> = {}
+      fieldRows.forEach(f => {
+        if (f.name.trim()) fieldsDict[f.name.trim()] = f.type || 'string'
+      })
+
+      // Send fields only when the user edited them (and left some), so the stored schema is kept
+      const sendFields = fieldsEditedRef.current && Object.keys(fieldsDict).length > 0
+      const updated = await updateTemplate(activeTemplate.id, {
+        name: templateName.trim(),
+        ...(sendFields ? { fields: fieldsDict } : {}),
+      })
+
+      upsertTemplate({
+        ...activeTemplate,
+        name: (updated['name'] as string) || templateName.trim(),
+        pdf_path: (updated['pdf_path'] as string) || activeTemplate.pdf_path,
+        fields: (updated['fields'] as Template['fields']) || activeTemplate.fields,
+        field_count: typeof updated['field_count'] === 'number' ? updated['field_count'] : undefined,
+      })
+      setStatusMessage({ text: `Template "${templateName.trim()}" saved.`, type: 'success' })
+    } catch (err) {
+      setStatusMessage({ text: `Save failed: ${(err as Error).message}`, type: 'error' })
     } finally {
       setIsRegistering(false)
     }
@@ -358,7 +410,8 @@ export function Studio() {
           onSelectField={setSelectedFieldKey}
           onMakeFillable={handleMakeFillable}
           isMakeFillableLoading={isMakeFillableLoading}
-          onRegisterTemplate={handleRegisterTemplate}
+          onRegisterTemplate={activeTemplate ? handleSaveTemplate : handleRegisterTemplate}
+          isExistingTemplate={Boolean(activeTemplate)}
           isRegistering={isRegistering}
           narrativeText={narrativeText}
           onNarrativeChange={setNarrativeText}

@@ -100,6 +100,20 @@ export async function createTemplate(payload: {
   return body as Record<string, unknown>
 }
 
+// PUT /templates/{id}: only the keys sent are changed; pdf_path is kept as-is.
+export async function updateTemplate(
+  id: number,
+  payload: { name?: string; fields?: Record<string, unknown> }
+): Promise<Record<string, unknown>> {
+  const response = await fetch(`${API_BASE_URL}/templates/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const body = await parseJsonResponse(response)
+  if (!response.ok) throw new Error(extractErrorMessage(body, response.status))
+  return body as Record<string, unknown>
+}
 
 export async function uploadTemplatePdf(
   file: File,

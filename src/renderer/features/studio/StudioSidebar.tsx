@@ -40,6 +40,7 @@ interface StudioSidebarProps {
   onMakeFillable: () => void
   isMakeFillableLoading: boolean
   onRegisterTemplate: () => void
+  isExistingTemplate: boolean
   isRegistering: boolean
   // Filler Props
   narrativeText: string
@@ -75,6 +76,7 @@ export function StudioSidebar({
   onMakeFillable,
   isMakeFillableLoading,
   onRegisterTemplate,
+  isExistingTemplate,
   isRegistering,
   narrativeText,
   onNarrativeChange,
@@ -505,7 +507,9 @@ export function StudioSidebar({
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold h-10 text-sm shadow-sm rounded-md"
           >
             <FileCheck className="w-4 h-4 mr-2" />
-            {isRegistering ? 'Registering Template...' : 'Register Template'}
+            {isExistingTemplate
+              ? isRegistering ? 'Saving Changes...' : 'Save Changes'
+              : isRegistering ? 'Registering Template...' : 'Register Template'}
           </Button>
         ) : (
           <Button
