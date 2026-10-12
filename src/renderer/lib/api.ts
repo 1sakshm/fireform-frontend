@@ -156,8 +156,10 @@ export async function resolvePreviewUrl(path: string): Promise<string | null> {
   if (/^https?:\/\//i.test(path)) return path
   const candidate = `${API_BASE_URL}/templates/preview?path=${encodeURIComponent(path)}`
   try {
-    const response = await fetch(candidate, { method: 'HEAD' })
-    if (response.ok || response.status === 405) return candidate
+    // FastAPI answers HEAD on GET routes with 405, so probe with GET and drop the body.
+    const response = await fetch(candidate)
+    response.body?.cancel().catch(() => {})
+    if (response.ok) return candidate
   } catch {
     // unreachable
   }

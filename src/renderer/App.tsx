@@ -11,6 +11,7 @@ import { Studio } from './features/studio/Studio'
 import { TemplatesList } from './features/templates-list/TemplatesList'
 import { LoadingScreen } from './components/LoadingScreen'
 import { Submissions } from './features/submissions/Submissions'
+import { PdfPreviewer } from './components/PdfPreviewer'
 import { cn } from './lib/utils'
 
 const NAV_ITEMS = [
@@ -114,6 +115,7 @@ export function App() {
             </div>
           </div>
         )}
+        {activeTab === 'pdfPreviewer' && <PdfPreviewer />}
       </main>
     </div>
   )

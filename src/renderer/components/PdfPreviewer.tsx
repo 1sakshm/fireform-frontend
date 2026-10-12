@@ -50,11 +50,9 @@ export function PdfPreviewer({ initialPath }: PdfPreviewerProps = {}) {
       setFrameUrl(url)
       setStatus({ message: `Loaded: ${raw}`, type: 'success' })
     } else {
-      const likelyLocal = !/^https?:\/\//i.test(raw) && !raw.startsWith('/')
+      setFrameUrl('')
       setStatus({
-        message: likelyLocal
-          ? `Could not preview "${raw}". It looks like a server-local path.`
-          : `Could not load PDF at specified path.`,
+        message: `Could not load "${raw}". The file was not found or the backend is unreachable.`,
         type: 'error',
       })
     }
