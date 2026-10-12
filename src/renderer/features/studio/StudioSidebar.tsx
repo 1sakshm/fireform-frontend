@@ -19,7 +19,7 @@ import { Input } from '../../components/ui/input'
 import { Badge } from '../../components/ui/badge'
 import { cn } from '../../lib/utils'
 import type { FieldRow } from '../../types'
-import { FIELD_TYPES } from '../../lib/constants'
+import { FIELD_TYPES, TYPE_VALUE_TO_LABEL } from '../../lib/constants'
 
 interface StudioSidebarProps {
   mode: 'builder' | 'filler'
@@ -29,6 +29,7 @@ interface StudioSidebarProps {
   templateDescription: string
   onTemplateDescriptionChange: (desc: string) => void
   selectedFile: File | null
+  hasPdf: boolean
   onFileSelect: (file: File) => void
   fieldRows: FieldRow[]
   onAddField: () => void
@@ -63,6 +64,7 @@ export function StudioSidebar({
   templateDescription,
   onTemplateDescriptionChange,
   selectedFile,
+  hasPdf,
   onFileSelect,
   fieldRows,
   onAddField,
@@ -165,7 +167,7 @@ export function StudioSidebar({
               <span>Template</span>
             </div>
             <span className="text-[11px] font-mono lowercase text-zinc-400 font-normal">
-              {templateName || 'sample'}
+              {templateName}
             </span>
           </div>
 
@@ -212,8 +214,8 @@ export function StudioSidebar({
               </div>
 
               <div className="text-[10px] text-zinc-400 font-mono flex items-center justify-between">
-                <span>form_type: {templateName ? templateName.toLowerCase().replace(/\s+/g, '_') : 'sample'}</span>
-                <span>PDF Ready</span>
+                <span>{templateName && `form_type: ${templateName.toLowerCase().replace(/\s+/g, '_')}`}</span>
+                <span>{hasPdf ? 'PDF Ready' : 'No PDF yet'}</span>
               </div>
             </div>
           )}
@@ -375,23 +377,13 @@ export function StudioSidebar({
                           <div className="flex items-center gap-1 mt-0.5">
                             <span
                               className={cn(
-                                'text-[9px] uppercase font-mono px-1 rounded',
-                                isSelected
-                                  ? 'bg-zinc-800 text-zinc-200'
-                                  : 'bg-zinc-200 text-zinc-600'
-                              )}
-                            >
-                              Page 1
-                            </span>
-                            <span
-                              className={cn(
                                 'text-[9px] uppercase font-mono font-semibold px-1 rounded',
                                 isSelected
                                   ? 'bg-blue-900/60 text-blue-200'
                                   : 'bg-blue-50 text-blue-700'
                               )}
                             >
-                              {field.type === 'string' ? 'MANUAL' : field.type.toUpperCase()}
+                              {TYPE_VALUE_TO_LABEL[field.type] || field.type}
                             </span>
                           </div>
                         </div>

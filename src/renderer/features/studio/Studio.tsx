@@ -348,6 +348,7 @@ export function Studio() {
           templateDescription={templateDescription}
           onTemplateDescriptionChange={setTemplateDescription}
           selectedFile={selectedFile}
+          hasPdf={Boolean(uploadedPdfPath || activeTemplate?.pdf_path)}
           onFileSelect={handleFileSelect}
           fieldRows={fieldRows}
           onAddField={addRow}
