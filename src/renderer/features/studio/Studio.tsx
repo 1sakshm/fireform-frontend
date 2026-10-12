@@ -61,12 +61,20 @@ export function Studio() {
   const { fieldRows, addRow, removeRow, updateRow, seedFromApiFields } = useFieldRows()
 
   // Hook for voice transcription
-  const { sttState, start: startRecording, stop: stopRecording } = useSpeechRecording(transcript => {
+  const { sttState, sttStatus, start: startRecording, stop: stopRecording } = useSpeechRecording(transcript => {
     if (transcript) {
       setNarrativeText((prev: string) => (prev ? `${prev}\n${transcript}` : transcript))
       setStatusMessage({ text: 'Voice transcript added to narrative.', type: 'success' })
     }
   })
+
+  // Surface recorder progress and failures (permission denied, no speech, ...) in the status banner
+  useEffect(() => {
+    if (!sttStatus || sttStatus === 'Transcription added.') return
+    const isError = /denied|failed|not available|no speech|nothing recorded/i.test(sttStatus)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStatusMessage({ text: `Voice: ${sttStatus}`, type: isError ? 'error' : 'info' })
+  }, [sttStatus])
 
   // Load models on mount
   useEffect(() => {
@@ -301,6 +309,7 @@ export function Studio() {
           narrativeText={narrativeText}
           onNarrativeChange={setNarrativeText}
           isRecording={sttState === 'recording'}
+          isTranscribing={sttState === 'transcribing'}
           onToggleRecording={() => {
             if (sttState === 'recording') stopRecording()
             else startRecording()

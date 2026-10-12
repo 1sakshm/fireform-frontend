@@ -8,6 +8,7 @@ import {
   Upload,
   Mic,
   MicOff,
+  Loader2,
   CloudRain,
   MapPin,
   FileCheck,
@@ -43,6 +44,7 @@ interface StudioSidebarProps {
   narrativeText: string
   onNarrativeChange: (text: string) => void
   isRecording: boolean
+  isTranscribing: boolean
   onToggleRecording: () => void
   availableModels: string[]
   selectedModel: string
@@ -75,6 +77,7 @@ export function StudioSidebar({
   narrativeText,
   onNarrativeChange,
   isRecording,
+  isTranscribing,
   onToggleRecording,
   availableModels,
   selectedModel,
@@ -249,15 +252,28 @@ export function StudioSidebar({
                   <button
                     type="button"
                     onClick={onToggleRecording}
+                    disabled={isTranscribing}
                     className={cn(
-                      'absolute right-2 bottom-2 p-1.5 rounded-full transition-colors',
+                      'absolute right-2 bottom-2 p-1.5 rounded-full transition-colors disabled:opacity-60',
                       isRecording
                         ? 'bg-red-600 text-white animate-pulse'
                         : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
                     )}
-                    title={isRecording ? 'Stop speech recording' : 'Record voice transcript with Whisper'}
+                    title={
+                      isTranscribing
+                        ? 'Transcribing…'
+                        : isRecording
+                          ? 'Stop speech recording'
+                          : 'Record voice transcript with Whisper'
+                    }
                   >
-                    {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                    {isTranscribing ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : isRecording ? (
+                      <MicOff className="w-3.5 h-3.5" />
+                    ) : (
+                      <Mic className="w-3.5 h-3.5" />
+                    )}
                   </button>
                 </div>
 
