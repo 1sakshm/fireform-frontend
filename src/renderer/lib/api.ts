@@ -15,6 +15,17 @@ function extractErrorMessage(body: unknown, statusCode: number): string {
   if (body && typeof body === 'object') {
     const b = body as Record<string, unknown>
     if (typeof b['error'] === 'string') return b['error']
+    // FireForm 422 body: { error_code, message, validation_errors: [{ field, issue }] }
+    if (Array.isArray(b['validation_errors'])) {
+      const first = b['validation_errors'][0] as Record<string, unknown> | undefined
+      if (first && typeof first['issue'] === 'string') {
+        return typeof first['field'] === 'string' && first['field']
+          ? `${first['field']}: ${first['issue']}`
+          : first['issue']
+      }
+    }
+    // FireForm AppError body: { error_code, message, detail? }
+    if (typeof b['message'] === 'string') return b['message']
     if (Array.isArray(b['detail'])) {
       const first = b['detail'][0]
       if (first && typeof first === 'object' && typeof (first as Record<string, unknown>)['msg'] === 'string') {
