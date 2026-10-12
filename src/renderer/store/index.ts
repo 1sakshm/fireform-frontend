@@ -9,6 +9,7 @@ interface AppStore {
   previewPath: string
   activeTemplateId: number | null
   selectedFieldKey: string | null
+  narrativeText: string
 
   setTemplates: (templates: Template[]) => void
   upsertTemplate: (template: Template) => void
@@ -19,6 +20,7 @@ interface AppStore {
   setPreviewPath: (path: string) => void
   setActiveTemplateId: (id: number | null) => void
   setSelectedFieldKey: (key: string | null) => void
+  setNarrativeText: (text: string | ((prev: string) => string)) => void
 }
 
 export const useStore = create<AppStore>((set, get) => ({
@@ -28,6 +30,8 @@ export const useStore = create<AppStore>((set, get) => ({
   previewPath: loadLastOutputPath() || '',
   activeTemplateId: null,
   selectedFieldKey: null,
+  // Studio narrative: kept in memory only (may contain incident PII), survives tab switches
+  narrativeText: '',
 
   setTemplates: (templates) => {
     saveTemplates(templates)
@@ -80,4 +84,6 @@ export const useStore = create<AppStore>((set, get) => ({
   setPreviewPath: (previewPath) => set({ previewPath }),
   setActiveTemplateId: (activeTemplateId) => set({ activeTemplateId }),
   setSelectedFieldKey: (selectedFieldKey) => set({ selectedFieldKey }),
+  setNarrativeText: (text) =>
+    set(state => ({ narrativeText: typeof text === 'function' ? text(state.narrativeText) : text })),
 }))

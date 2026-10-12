@@ -28,6 +28,8 @@ export function Studio() {
     selectedFieldKey,
     setSelectedFieldKey,
     setPreviewPath,
+    narrativeText,
+    setNarrativeText,
   } = useStore(s => ({
     templates: s.templates,
     setTemplates: s.setTemplates,
@@ -37,6 +39,8 @@ export function Studio() {
     selectedFieldKey: s.selectedFieldKey,
     setSelectedFieldKey: s.setSelectedFieldKey,
     setPreviewPath: s.setPreviewPath,
+    narrativeText: s.narrativeText,
+    setNarrativeText: s.setNarrativeText,
   }))
 
   const [mode, setMode] = useState<'builder' | 'filler'>('builder')
@@ -46,7 +50,6 @@ export function Studio() {
   const [uploadedPdfPath, setUploadedPdfPath] = useState<string | null>(null)
 
   // Filler state
-  const [narrativeText, setNarrativeText] = useState('')
   const [availableModels, setAvailableModels] = useState<string[]>(['qwen2.5:3b', 'llama3.2', 'mistral'])
   const [selectedModel, setSelectedModel] = useState('qwen2.5:3b')
 
