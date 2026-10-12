@@ -29,9 +29,9 @@ export function useFieldRows() {
   }, [])
 
   const seedFromApiFields = useCallback(
-    (fields: Array<{ name: string; description?: string; type: string }>) => {
+    (fields: Array<{ name: string; description?: string; type: string }>, confirmReplace = true) => {
       const hasExisting = fieldRows.some(r => r.name.trim())
-      if (hasExisting) {
+      if (confirmReplace && hasExisting) {
         const replace = window.confirm(
           `This PDF has ${fields.length} fillable field${fields.length === 1 ? '' : 's'}.\n\n` +
             'Replace your current form fields with them? Your existing entries will be lost.'

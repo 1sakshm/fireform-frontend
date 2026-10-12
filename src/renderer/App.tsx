@@ -37,13 +37,14 @@ export function App() {
 
   useEffect(() => {
     waitForBackend().then(async () => {
-      setReady(true)
+      // Load live templates before rendering so stale localStorage data never shows first
       try {
         const fetched = await fetchTemplates()
         setTemplates(fetched)
       } catch {
         // Fallback handled by store
       }
+      setReady(true)
     })
   }, [])
 

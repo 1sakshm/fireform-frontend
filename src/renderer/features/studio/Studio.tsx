@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useStore } from '../../store'
 import type { Template } from '../../types'
 import { DocumentViewer } from './DocumentViewer'
@@ -61,7 +61,7 @@ export function Studio() {
   const [isZipcodeOpen, setIsZipcodeOpen] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'info' | 'success' | 'error' } | null>(null)
 
-  const { fieldRows, addRow, removeRow, updateRow, seedFromApiFields } = useFieldRows()
+  const { fieldRows, addRow, removeRow, updateRow, seedFromApiFields, resetRows } = useFieldRows()
 
   // Hook for voice transcription
   const { sttState, sttStatus, start: startRecording, stop: stopRecording } = useSpeechRecording(transcript => {
@@ -99,9 +99,10 @@ export function Studio() {
     return templates[0] || null
   }, [activeTemplateId, templates])
 
+  // Re-seed whenever a different template becomes active (not only on first load)
+  const seededTemplateIdRef = useRef<number | null>(null)
   useEffect(() => {
-    if (activeTemplate && !templateName) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (activeTemplate && activeTemplate.id !== seededTemplateIdRef.current) {
       setTemplateName(activeTemplate.name)
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setUploadedPdfPath(activeTemplate.pdf_path)
@@ -115,9 +116,13 @@ export function Studio() {
           type: typeof v === 'object' && v.type ? v.type : typeof v === 'string' ? v : 'string',
         }))
         if (entries.length > 0) {
-          seedFromApiFields(entries)
+          seedFromApiFields(entries, false)
+        } else {
+          resetRows()
         }
       }
+      setSelectedFile(null)
+      seededTemplateIdRef.current = activeTemplate.id
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTemplate])
