@@ -38,9 +38,12 @@ export function DocumentViewer({
       if (url) {
         setFrameUrl(url)
       } else {
+        // Drop the previous document so a failed load can't leave a stale PDF on screen
+        setFrameUrl('')
         setLoadError(`Unable to preview PDF at path "${path}".`)
       }
     } catch (err: any) {
+      setFrameUrl('')
       setLoadError(err?.message || 'Error loading PDF preview.')
     }
   }
