@@ -426,7 +426,7 @@ export function StudioSidebar({
                   size="xs"
                   onClick={onMakeFillable}
                   disabled={isMakeFillableLoading}
-                  className="flex-1 bg-zinc-900 text-white hover:bg-zinc-800 border-zinc-900 text-xs"
+                  className="flex-1 bg-zinc-900 text-white hover:bg-zinc-800 hover:text-white border-zinc-900 text-xs"
                 >
                   <Sparkles className="w-3 h-3 mr-1 text-amber-300" />
                   {isMakeFillableLoading ? 'Extracting...' : 'AI Schema'}
