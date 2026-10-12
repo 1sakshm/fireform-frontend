@@ -44,6 +44,9 @@ export function App() {
       } catch {
         // Fallback handled by store
       }
+      // Open Studio on the first template by default; null is reserved for "New Template"
+      const { templates: loaded, activeTemplateId, setActiveTemplateId } = useStore.getState()
+      if (activeTemplateId === null && loaded[0]) setActiveTemplateId(loaded[0].id)
       setReady(true)
     })
   }, [])

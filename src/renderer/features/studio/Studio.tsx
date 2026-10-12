@@ -91,12 +91,12 @@ export function Studio() {
       .catch(() => {})
   }, [])
 
-  // Sync active template from store or default to first
+  // Active template from the store; null means "new template" (clean slate)
   const activeTemplate = useMemo(() => {
     if (activeTemplateId) {
       return templates.find(t => t.id === activeTemplateId) || null
     }
-    return templates[0] || null
+    return null
   }, [activeTemplateId, templates])
 
   // Re-seed whenever a different template becomes active (not only on first load)
@@ -123,6 +123,13 @@ export function Studio() {
       }
       setSelectedFile(null)
       seededTemplateIdRef.current = activeTemplate.id
+    } else if (!activeTemplate && seededTemplateIdRef.current !== null) {
+      // Switched to "New Template": clear the previous template's data
+      setTemplateName('')
+      setUploadedPdfPath(null)
+      resetRows()
+      setSelectedFile(null)
+      seededTemplateIdRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTemplate])
@@ -184,6 +191,10 @@ export function Studio() {
       setStatusMessage({ text: 'Please provide a template name.', type: 'error' })
       return
     }
+    if (!uploadedPdfPath) {
+      setStatusMessage({ text: 'Upload a PDF template before registering.', type: 'error' })
+      return
+    }
 
     setIsRegistering(true)
     setStatusMessage({ text: 'Registering template in database...', type: 'info' })
@@ -227,7 +238,7 @@ export function Studio() {
       return
     }
 
-    const tplId = activeTemplate?.id || (templates[0]?.id ?? null)
+    const tplId = activeTemplate?.id ?? null
     if (!tplId) {
       setStatusMessage({ text: 'Please select or register a template first.', type: 'error' })
       return
