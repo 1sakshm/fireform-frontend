@@ -52,6 +52,7 @@ export function Studio() {
   // Filler state
   const [availableModels, setAvailableModels] = useState<string[]>(['qwen2.5:3b', 'llama3.2', 'mistral'])
   const [selectedModel, setSelectedModel] = useState('qwen2.5:3b')
+  const [weatherCoords, setWeatherCoords] = useState<{ lat: number; lon: number } | null>(null)
 
   // Modals & Loaders
   const [isMakeFillableLoading, setIsMakeFillableLoading] = useState(false)
@@ -380,6 +381,8 @@ export function Studio() {
       <WeatherModal
         isOpen={isWeatherOpen}
         onClose={() => setIsWeatherOpen(false)}
+        initialLatitude={weatherCoords?.lat}
+        initialLongitude={weatherCoords?.lon}
         onAgree={weatherText => {
           setNarrativeText((prev: string) => (prev ? `${prev}\n\n[WEATHER CONDITIONS]\n${weatherText}` : weatherText))
           setIsWeatherOpen(false)
@@ -390,6 +393,7 @@ export function Studio() {
         isOpen={isZipcodeOpen}
         onClose={() => setIsZipcodeOpen(false)}
         onFetchWeather={(lat, lon) => {
+          setWeatherCoords({ lat, lon })
           setIsZipcodeOpen(false)
           setIsWeatherOpen(true)
           setStatusMessage({ text: `Address located at ${lat.toFixed(4)}, ${lon.toFixed(4)}`, type: 'info' })
