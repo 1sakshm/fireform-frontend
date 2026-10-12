@@ -12,6 +12,7 @@ import {
 import { useStore } from '../store'
 import { resolvePreviewUrl } from '../lib/api'
 import { saveLastOutputPath } from '../lib/storage'
+import { withPdfViewerParams } from '../lib/utils'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Badge } from './ui/badge'
@@ -200,7 +201,7 @@ export function PdfPreviewer({ initialPath }: PdfPreviewerProps = {}) {
             <iframe
               id="pdfFrame"
               title="PDF Inbuilt Document Preview"
-              src={frameUrl}
+              src={withPdfViewerParams(frameUrl)}
               className="w-full h-full border-0 bg-white"
             />
           </div>
