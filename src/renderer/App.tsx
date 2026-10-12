@@ -60,7 +60,7 @@ export function App() {
       const next = await fetchBackendStatus()
       if (cancelled) return
       setBackend(next)
-      timer = setTimeout(poll, 5000)
+      timer = setTimeout(poll, 15000)
     }
     poll()
     return () => {
