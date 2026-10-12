@@ -78,6 +78,10 @@ export function Studio() {
   }
   const updateRow = (index: number, updates: Partial<FieldRow>) => {
     fieldsEditedRef.current = true
+    // Selection is by name, so follow the selected row when Field Properties renames it
+    if (updates.name !== undefined && fieldRows[index]?.name === selectedFieldKey) {
+      setSelectedFieldKey(updates.name)
+    }
     rowEdits.updateRow(index, updates)
   }
 
