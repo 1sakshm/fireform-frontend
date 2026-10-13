@@ -155,6 +155,7 @@ export function StudioSidebar({
       {/* Scrollable Configuration Sections */}
       <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-zinc-100">
         {/* Section 1: Template Metadata (Photo 1 matching) */}
+        {mode === 'builder' && (
         <div className="p-3.5">
           <div
             onClick={() => toggleSection('template')}
@@ -222,6 +223,7 @@ export function StudioSidebar({
             </div>
           )}
         </div>
+        )}
 
         {/* Mode Specific Section: Filler Narrative Input */}
         {mode === 'filler' && (
@@ -319,6 +321,8 @@ export function StudioSidebar({
         )}
 
         {/* Section 2: Fields List (Photo 1 Matching) */}
+        {/* Fields and Field Properties are template-building tools: Builder mode only */}
+        {mode === 'builder' && (<>
         <div className="p-3.5">
           <div
             onClick={() => toggleSection('fields')}
@@ -496,6 +500,7 @@ export function StudioSidebar({
             </div>
           )}
         </div>
+        </>)}
       </div>
 
       {/* Action Footer (Prominent Full Width Button matching Photo 1) */}
