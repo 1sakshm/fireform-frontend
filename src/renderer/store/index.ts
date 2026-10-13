@@ -16,6 +16,7 @@ export interface StudioDraft {
   fieldsEdited: boolean
   // PDF uploaded / made fillable since seeding; PUT can't replace a template's PDF
   pdfChanged: boolean
+  descriptionEdited: boolean
 }
 
 const EMPTY_STUDIO_DRAFT: StudioDraft = {
@@ -28,6 +29,7 @@ const EMPTY_STUDIO_DRAFT: StudioDraft = {
   seededTemplateId: null,
   fieldsEdited: false,
   pdfChanged: false,
+  descriptionEdited: false,
 }
 
 interface AppStore {
@@ -55,6 +57,14 @@ interface AppStore {
   setStudioFieldRows: (rows: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void
   resetStudioDraft: () => void
   setSelectedModel: (model: string) => void
+}
+
+// Unsaved changes compared with the saved template (or anything entered for a new one)
+export function selectStudioDraftDirty(state: AppStore): boolean {
+  const draft = state.studioDraft
+  if (draft.fieldsEdited || draft.pdfChanged || draft.descriptionEdited) return true
+  const saved = state.templates.find(t => t.id === draft.seededTemplateId)
+  return draft.templateName.trim() !== (saved?.name ?? '').trim()
 }
 
 export const useStore = create<AppStore>((set, get) => ({
@@ -101,6 +111,11 @@ export const useStore = create<AppStore>((set, get) => ({
     const selectedFillIds = get().selectedFillIds.filter(i => i !== id)
     saveTemplates(templates)
     set({ templates, selectedFillIds })
+    // Deleting the template Studio is editing also drops its draft (the delete was confirmed)
+    if (get().activeTemplateId === id || get().studioDraft.seededTemplateId === id) {
+      get().resetStudioDraft()
+      set({ activeTemplateId: null })
+    }
   },
 
   toggleFillSelection: (id) => {

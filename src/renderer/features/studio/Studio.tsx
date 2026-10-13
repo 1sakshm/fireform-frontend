@@ -51,7 +51,8 @@ export function Studio() {
   const { mode, templateName, templateDescription, selectedFile, uploadedPdfPath } = draft
   const setMode = (next: typeof mode) => setDraft({ mode: next })
   const setTemplateName = (name: string) => setDraft({ templateName: name })
-  const setTemplateDescription = (description: string) => setDraft({ templateDescription: description })
+  const setTemplateDescription = (description: string) =>
+    setDraft({ templateDescription: description, descriptionEdited: true })
   const setSelectedFile = (file: File | null) => setDraft({ selectedFile: file })
   const setUploadedPdfPath = (path: string | null) => setDraft({ uploadedPdfPath: path })
 
@@ -152,14 +153,14 @@ export function Studio() {
         }
       }
       setSelectedFile(null)
-      setDraft({ fieldsEdited: false, pdfChanged: false, seededTemplateId: activeTemplate.id })
+      setDraft({ fieldsEdited: false, pdfChanged: false, descriptionEdited: false, seededTemplateId: activeTemplate.id })
     } else if (!activeTemplate && seededTemplateId !== null) {
       // Switched to "New Template": clear the previous template's data
       setTemplateName('')
       setUploadedPdfPath(null)
       resetRows()
       setSelectedFile(null)
-      setDraft({ fieldsEdited: false, pdfChanged: false, seededTemplateId: null })
+      setDraft({ fieldsEdited: false, pdfChanged: false, descriptionEdited: false, seededTemplateId: null })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTemplate])
@@ -314,6 +315,7 @@ export function Studio() {
         fields: (updated['fields'] as Template['fields']) || activeTemplate.fields,
         field_count: typeof updated['field_count'] === 'number' ? updated['field_count'] : undefined,
       })
+      setDraft({ fieldsEdited: false, descriptionEdited: false })
       setStatusMessage({ text: `Template "${templateName.trim()}" saved.`, type: 'success' })
     } catch (err) {
       setStatusMessage({ text: `Save failed: ${(err as Error).message}`, type: 'error' })
