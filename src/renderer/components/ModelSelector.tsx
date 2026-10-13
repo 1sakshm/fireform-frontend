@@ -68,14 +68,14 @@ export function ModelSelector({ value, onChange, onBusyChange }: ModelSelectorPr
 
   function handleChange(model: string) {
     const selected = models.find(item => item.name === model)
-    if (!selected || selected.installed) {
-      setError('')
-      setSelectedModel(model)
-      onChange(model)
+    if (!selected) return
+
+    setError('')
+    setSelectedModel(model)
+    onChange(model)
+    if (selected.installed) {
       saveSelectedModel(model)
-      return
     }
-    void downloadModel(model, selectedModel)
   }
 
   const selectedInfo = models.find(model => model.name === selectedModel)
@@ -109,13 +109,16 @@ export function ModelSelector({ value, onChange, onBusyChange }: ModelSelectorPr
         </p>
       )}
       {selectedInfo && !selectedInfo.installed && !busy && (
-        <button
-          type="button"
-          className="secondary-btn"
-          onClick={() => void downloadModel(selectedInfo.name, selectedModel)}
-        >
-          Download {selectedInfo.name}
-        </button>
+        <>
+          <p className="helper">This model is not installed. Download it before filling forms.</p>
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={() => void downloadModel(selectedInfo.name, selectedModel)}
+          >
+            Download {selectedInfo.name}
+          </button>
+        </>
       )}
       {busy && (
         <div aria-live="polite">
