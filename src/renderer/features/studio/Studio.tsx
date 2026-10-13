@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useStore } from '../../store'
 import type { FieldRow, Template } from '../../types'
 import { DocumentViewer } from './DocumentViewer'
@@ -44,15 +44,21 @@ export function Studio() {
     setNarrativeText: s.setNarrativeText,
   }))
 
-  const [mode, setMode] = useState<'builder' | 'filler'>('builder')
-  const [templateName, setTemplateName] = useState('')
-  const [templateDescription, setTemplateDescription] = useState('')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [uploadedPdfPath, setUploadedPdfPath] = useState<string | null>(null)
+  // The unsaved Builder draft lives in the store (memory only) so it survives tab switches
+  const draft = useStore(s => s.studioDraft)
+  const setDraft = useStore(s => s.setStudioDraft)
+  const setStudioFieldRows = useStore(s => s.setStudioFieldRows)
+  const { mode, templateName, templateDescription, selectedFile, uploadedPdfPath } = draft
+  const setMode = (next: typeof mode) => setDraft({ mode: next })
+  const setTemplateName = (name: string) => setDraft({ templateName: name })
+  const setTemplateDescription = (description: string) => setDraft({ templateDescription: description })
+  const setSelectedFile = (file: File | null) => setDraft({ selectedFile: file })
+  const setUploadedPdfPath = (path: string | null) => setDraft({ uploadedPdfPath: path })
 
   // Filler state
   const [availableModels, setAvailableModels] = useState<string[]>(['qwen2.5:3b', 'llama3.2', 'mistral'])
-  const [selectedModel, setSelectedModel] = useState('qwen2.5:3b')
+  const selectedModel = useStore(s => s.selectedModel) || 'qwen2.5:3b'
+  const setSelectedModel = useStore(s => s.setSelectedModel)
   const [weatherCoords, setWeatherCoords] = useState<{ lat: number; lon: number } | null>(null)
 
   // Modals & Loaders
@@ -63,21 +69,20 @@ export function Studio() {
   const [isZipcodeOpen, setIsZipcodeOpen] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'info' | 'success' | 'error' } | null>(null)
 
-  const { fieldRows, seedFromApiFields, resetRows, ...rowEdits } = useFieldRows()
+  const { fieldRows, seedFromApiFields, resetRows, ...rowEdits } = useFieldRows([draft.fieldRows, setStudioFieldRows])
   // Studio's flat {label: type} dict is lossy (it drops the extracted schema/tables and merges
   // duplicate labels), so fields are only sent once the user has edited the rows; otherwise
   // the backend extracts (create) or keeps (update) the PDF's own schema.
-  const fieldsEditedRef = useRef(false)
   const addRow = () => {
-    fieldsEditedRef.current = true
+    setDraft({ fieldsEdited: true })
     rowEdits.addRow()
   }
   const removeRow = (index: number) => {
-    fieldsEditedRef.current = true
+    setDraft({ fieldsEdited: true })
     rowEdits.removeRow(index)
   }
   const updateRow = (index: number, updates: Partial<FieldRow>) => {
-    fieldsEditedRef.current = true
+    setDraft({ fieldsEdited: true })
     // Selection is by name, so follow the selected row when Field Properties renames it
     if (updates.name !== undefined && fieldRows[index]?.name === selectedFieldKey) {
       setSelectedFieldKey(updates.name)
@@ -107,7 +112,9 @@ export function Studio() {
       .then(res => {
         if (res && res.models && res.models.length > 0) {
           setAvailableModels(res.models)
-          setSelectedModel(res.default || res.models[0])
+          // Keep the user's pick across tab switches; only apply the default the first time
+          const store = useStore.getState()
+          if (!store.selectedModel) store.setSelectedModel(res.default || res.models[0])
         }
       })
       .catch(() => {})
@@ -121,12 +128,11 @@ export function Studio() {
     return null
   }, [activeTemplateId, templates])
 
-  // Re-seed whenever a different template becomes active (not only on first load)
-  const seededTemplateIdRef = useRef<number | null>(null)
-  // PUT can't replace a template's PDF, so Save is blocked after an upload / AI Schema
-  const pdfChangedRef = useRef(false)
+  // Re-seed only when a different template becomes active; remounting Studio (tab switch)
+  // or re-opening the same template keeps the draft
   useEffect(() => {
-    if (activeTemplate && activeTemplate.id !== seededTemplateIdRef.current) {
+    const { seededTemplateId } = useStore.getState().studioDraft
+    if (activeTemplate && activeTemplate.id !== seededTemplateId) {
       setTemplateName(activeTemplate.name)
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setUploadedPdfPath(activeTemplate.pdf_path)
@@ -146,18 +152,14 @@ export function Studio() {
         }
       }
       setSelectedFile(null)
-      fieldsEditedRef.current = false
-      pdfChangedRef.current = false
-      seededTemplateIdRef.current = activeTemplate.id
-    } else if (!activeTemplate && seededTemplateIdRef.current !== null) {
+      setDraft({ fieldsEdited: false, pdfChanged: false, seededTemplateId: activeTemplate.id })
+    } else if (!activeTemplate && seededTemplateId !== null) {
       // Switched to "New Template": clear the previous template's data
       setTemplateName('')
       setUploadedPdfPath(null)
       resetRows()
       setSelectedFile(null)
-      fieldsEditedRef.current = false
-      pdfChangedRef.current = false
-      seededTemplateIdRef.current = null
+      setDraft({ fieldsEdited: false, pdfChanged: false, seededTemplateId: null })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTemplate])
@@ -173,11 +175,11 @@ export function Studio() {
       const res: any = await uploadTemplatePdf(file, DEFAULT_TEMPLATE_DIRECTORY)
       const path = typeof res?.pdf_path === 'string' ? res.pdf_path : ''
       setUploadedPdfPath(path)
-      pdfChangedRef.current = true
+      setDraft({ pdfChanged: true })
       // Seed the field list from the fillable fields the backend extracted
       const fields = Array.isArray(res?.fields) ? res.fields : []
       const seeded = fields.length > 0 ? seedFromApiFields(fields) : null
-      if (seeded === 'seeded') fieldsEditedRef.current = false
+      if (seeded === 'seeded') setDraft({ fieldsEdited: false })
       const detail =
         seeded === 'seeded'
           ? ` — loaded ${fields.length} field${fields.length === 1 ? '' : 's'} from the PDF`
@@ -218,8 +220,7 @@ export function Studio() {
       setUploadedPdfPath(typeof res?.pdf_path === 'string' && res.pdf_path ? res.pdf_path : path)
       // Drop the original upload's rows; with no fields sent, Register extracts them from the fillable PDF
       seedFromApiFields([], false)
-      fieldsEditedRef.current = false
-      pdfChangedRef.current = true
+      setDraft({ fieldsEdited: false, pdfChanged: true })
       const countText = count !== null ? ` with ${count} field${count === 1 ? '' : 's'} detected` : ''
       setStatusMessage({ text: `Fillable PDF created${countText}. Its fields are read from the PDF when you register.`, type: 'success' })
     } catch (err: any) {
@@ -243,9 +244,9 @@ export function Studio() {
     setIsRegistering(true)
     setStatusMessage({ text: 'Registering template in database...', type: 'info' })
     try {
-      // Empty fields ({}) let the backend extract the PDF's schema; see fieldsEditedRef
+      // Empty fields ({}) let the backend extract the PDF's schema; see draft.fieldsEdited
       const fieldsDict: Record<string, string> = {}
-      if (fieldsEditedRef.current) fieldRows.forEach(f => {
+      if (draft.fieldsEdited) fieldRows.forEach(f => {
         if (f.name.trim()) fieldsDict[f.name.trim()] = f.type || 'string'
       })
 
@@ -283,7 +284,7 @@ export function Studio() {
       setStatusMessage({ text: 'Please provide a template name.', type: 'error' })
       return
     }
-    if (pdfChangedRef.current) {
+    if (draft.pdfChanged) {
       setStatusMessage({
         text: 'The PDF changed. Save Changes can only update the name and fields; register it as a new template (Templates → New Template) instead.',
         type: 'error',
@@ -300,7 +301,7 @@ export function Studio() {
       })
 
       // Send fields only when the user edited them (and left some), so the stored schema is kept
-      const sendFields = fieldsEditedRef.current && Object.keys(fieldsDict).length > 0
+      const sendFields = draft.fieldsEdited && Object.keys(fieldsDict).length > 0
       const updated = await updateTemplate(activeTemplate.id, {
         name: templateName.trim(),
         ...(sendFields ? { fields: fieldsDict } : {}),
