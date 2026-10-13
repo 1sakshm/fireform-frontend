@@ -355,6 +355,7 @@ export function Studio() {
         setPreviewPath(outPath)
         setUploadedPdfPath(outPath)
         saveLastOutputPath(outPath)
+        useStore.getState().markNarrativeFilled()
         setStatusMessage({ text: 'Document filled and PDF created!', type: 'success' })
       }
     } catch (err: any) {

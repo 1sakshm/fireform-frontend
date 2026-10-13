@@ -40,6 +40,8 @@ interface AppStore {
   activeTemplateId: number | null
   selectedFieldKey: string | null
   narrativeText: string
+  // Narrative edited since the last successful fill
+  narrativeDirty: boolean
   studioDraft: StudioDraft
   selectedModel: string
 
@@ -53,6 +55,7 @@ interface AppStore {
   setActiveTemplateId: (id: number | null) => void
   setSelectedFieldKey: (key: string | null) => void
   setNarrativeText: (text: string | ((prev: string) => string)) => void
+  markNarrativeFilled: () => void
   setStudioDraft: (patch: Partial<StudioDraft>) => void
   setStudioFieldRows: (rows: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void
   resetStudioDraft: () => void
@@ -67,6 +70,11 @@ export function selectStudioDraftDirty(state: AppStore): boolean {
   return draft.templateName.trim() !== (saved?.name ?? '').trim()
 }
 
+// Work that a reload, window close or quit would lose (see beforeunload in App)
+export function selectHasUnsavedWork(state: AppStore): boolean {
+  return selectStudioDraftDirty(state) || (state.narrativeDirty && state.narrativeText.trim() !== '')
+}
+
 export const useStore = create<AppStore>((set, get) => ({
   templates: loadTemplates(),
   selectedFillIds: [],
@@ -76,6 +84,7 @@ export const useStore = create<AppStore>((set, get) => ({
   selectedFieldKey: null,
   // Studio narrative: kept in memory only (may contain incident PII), survives tab switches
   narrativeText: '',
+  narrativeDirty: false,
   studioDraft: EMPTY_STUDIO_DRAFT,
   // '' until the user picks one or Studio applies the backend default
   selectedModel: '',
@@ -137,7 +146,11 @@ export const useStore = create<AppStore>((set, get) => ({
   setActiveTemplateId: (activeTemplateId) => set({ activeTemplateId }),
   setSelectedFieldKey: (selectedFieldKey) => set({ selectedFieldKey }),
   setNarrativeText: (text) =>
-    set(state => ({ narrativeText: typeof text === 'function' ? text(state.narrativeText) : text })),
+    set(state => ({
+      narrativeText: typeof text === 'function' ? text(state.narrativeText) : text,
+      narrativeDirty: true,
+    })),
+  markNarrativeFilled: () => set({ narrativeDirty: false }),
   setStudioDraft: (patch) => set(state => ({ studioDraft: { ...state.studioDraft, ...patch } })),
   setStudioFieldRows: (rows) =>
     set(state => ({

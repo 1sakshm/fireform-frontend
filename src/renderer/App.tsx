@@ -5,7 +5,7 @@ import {
   History,
   Flame,
 } from 'lucide-react'
-import { useStore } from './store'
+import { useStore, selectHasUnsavedWork } from './store'
 import { waitForBackend, fetchTemplates, fetchBackendStatus } from './lib/api'
 import type { BackendStatus } from './lib/api'
 import { Studio } from './features/studio/Studio'
@@ -49,6 +49,18 @@ export function App() {
       if (activeTemplateId === null && loaded[0]) setActiveTemplateId(loaded[0].id)
       setReady(true)
     })
+  }, [])
+
+  // Warn before a reload / window close drops unsaved Studio work. Electron cancels the unload
+  // silently, so src/main shows the Leave/Stay dialog on 'will-prevent-unload'.
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!selectHasUnsavedWork(useStore.getState())) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [])
 
   // Poll backend health so the header pill reflects reality.
