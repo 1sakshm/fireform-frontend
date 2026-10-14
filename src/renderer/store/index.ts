@@ -100,6 +100,7 @@ export const useStore = create<AppStore>((set, get) => ({
     const normalized: Template = {
       id: template.id,
       name: template.name || '',
+      description: template.description || '',
       pdf_path: template.pdf_path || '',
       fields: template.fields || {},
       field_count: template.field_count,

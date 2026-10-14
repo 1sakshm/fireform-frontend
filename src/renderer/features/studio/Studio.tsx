@@ -249,6 +249,7 @@ export function Studio() {
 
       const created: any = await createTemplate({
         name: templateName.trim(),
+        description: templateDescription.trim(),
         pdf_path: uploadedPdfPath || 'src/inputs/sample.pdf',
         fields: fieldsDict,
       })
@@ -256,6 +257,7 @@ export function Studio() {
       const newTemplate: Template = {
         id: Number(created.id),
         name: created.name || templateName.trim(),
+        description: created.description || templateDescription.trim(),
         pdf_path: created.pdf_path || uploadedPdfPath || '',
         fields: created.fields || fieldsDict,
         field_count: created.field_count,
@@ -344,13 +346,9 @@ export function Studio() {
     setIsFilling(true)
     setStatusMessage({ text: 'Running LLM pipeline to fill document...', type: 'info' })
     try {
-      const combinedInput = templateDescription.trim()
-        ? `[FORM / TEMPLATE CONTEXT: ${templateDescription.trim()}]\n\n${narrativeText.trim()}`
-        : narrativeText.trim()
-
       const res: any = await fillTemplate({
         template_id: tplId,
-        input_text: combinedInput,
+        input_text: narrativeText.trim(),
         model: selectedModel,
       })
 

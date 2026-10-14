@@ -79,6 +79,7 @@ export async function fetchTemplates(): Promise<Template[]> {
   return (body as Record<string, unknown>[]).map(t => ({
     id: t['id'] as number,
     name: (t['name'] as string) || '',
+    description: (t['description'] as string) || '',
     pdf_path: (t['pdf_path'] as string) || '',
     fields: (t['fields'] as Record<string, any>) || {},
     field_count: typeof t['field_count'] === 'number' ? (t['field_count'] as number) : undefined,
@@ -87,6 +88,7 @@ export async function fetchTemplates(): Promise<Template[]> {
 
 export async function createTemplate(payload: {
   name: string
+  description: string
   pdf_path: string
   fields?: Record<string, any>
 }): Promise<Record<string, unknown>> {

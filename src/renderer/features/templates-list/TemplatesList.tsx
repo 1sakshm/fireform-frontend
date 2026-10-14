@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   FileText,
   Search,
@@ -8,6 +8,7 @@ import {
   Layers,
   Trash2,
   Plus,
+  Info,
 } from 'lucide-react'
 import { useStore } from '../../store'
 import { TYPE_VALUE_TO_LABEL } from '../../lib/constants'
@@ -61,6 +62,23 @@ export function TemplatesList() {
 
   const [view, setView] = useState<TemplatesView>(loadTemplatesView)
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedDescription, setSelectedDescription] = useState<{
+    name: string
+    description: string
+  } | null>(null)
+
+  useEffect(() => {
+    if (!selectedDescription) return
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setSelectedDescription(null)
+      }
+    }
+
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [selectedDescription])
   const del = useDeleteTemplate()
 
   function changeView(next: TemplatesView) {
@@ -78,6 +96,9 @@ export function TemplatesList() {
   function handlePreview(pdfPath: string) {
     setPreviewPath(pdfPath)
     setActiveTab('pdfPreviewer')
+  }
+  function handleViewDescription(name: string, description: string) {
+    setSelectedDescription({ name, description })
   }
 
   const filteredTemplates = useMemo(() => {
@@ -223,6 +244,15 @@ export function TemplatesList() {
                       <Eye className="w-3 h-3 mr-1" />
                       Preview
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => handleViewDescription(tpl.name, tpl.description)}
+                      className="text-zinc-600 hover:text-zinc-900 text-xs"
+                    >
+                      <Info className="w-3 h-3 mr-1" />
+                      Description
+                    </Button>
 
                     <div className="flex items-center gap-1">
                       <Button
@@ -293,6 +323,15 @@ export function TemplatesList() {
                           Preview
                         </Button>
                         <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => handleViewDescription(tpl.name, tpl.description)}
+                          className="text-zinc-600 hover:text-zinc-900 text-xs"
+                        >
+                          <Info className="w-3 h-3 mr-1" />
+                          Description
+                        </Button>
+                        <Button
                           variant="default"
                           size="xs"
                           onClick={() => handleOpenInStudio(tpl.id)}
@@ -339,6 +378,56 @@ export function TemplatesList() {
         onConfirm={del.confirm}
         onCancel={del.cancel}
       />
+      {selectedDescription && (
+        <div
+          className="modal-overlay"
+          onClick={e => {
+            if (e.target === e.currentTarget) {
+              setSelectedDescription(null)
+            }
+          }}
+        >
+          <div
+            className="modal-content"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="template-description-title"
+          >
+            <div className="modal-body">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded bg-zinc-100 flex items-center justify-center text-zinc-700">
+                  <Info className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3
+                    id="template-description-title"
+                    className="text-sm font-semibold text-zinc-900"
+                  >
+                    Template Description
+                  </h3>
+                  <p className="text-[10px] text-zinc-500">
+                    {selectedDescription.name}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-sm leading-6 text-zinc-700 whitespace-pre-wrap">
+                {selectedDescription.description || 'No description provided.'}
+              </p>
+            </div>
+
+            <div className="modal-footer">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setSelectedDescription(null)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
