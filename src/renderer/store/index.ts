@@ -20,7 +20,7 @@ export interface StudioDraft {
 }
 
 const EMPTY_STUDIO_DRAFT: StudioDraft = {
-  mode: 'builder',
+  mode: 'filler',
   templateName: '',
   templateDescription: '',
   fieldRows: [{ name: '', type: 'string' }],
