@@ -16,6 +16,7 @@ import { pluralize, cn } from '../../lib/utils'
 import type { TemplatesView } from '../../lib/storage'
 import { loadTemplatesView, saveTemplatesView } from '../../lib/storage'
 import { useDeleteTemplate } from '../../lib/useDeleteTemplate'
+import { useStudioDiscardGuard } from '../../lib/useStudioDiscardGuard'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -53,11 +54,10 @@ function getFieldEntries(fields: Record<string, any> = {}): Array<{ name: string
 }
 
 export function TemplatesList() {
-  const { templates, setActiveTab, setPreviewPath, setActiveTemplateId } = useStore(s => ({
+  const { templates, setActiveTab, setPreviewPath } = useStore(s => ({
     templates: s.templates,
     setActiveTab: s.setActiveTab,
     setPreviewPath: s.setPreviewPath,
-    setActiveTemplateId: s.setActiveTemplateId,
   }))
 
   const [view, setView] = useState<TemplatesView>(loadTemplatesView)
@@ -86,9 +86,11 @@ export function TemplatesList() {
     saveTemplatesView(next)
   }
 
+  // Asks before replacing an unsaved Studio draft
+  const studioGuard = useStudioDiscardGuard()
+
   function handleOpenInStudio(templateId: number) {
-    setActiveTemplateId(templateId)
-    setActiveTab('studio')
+    studioGuard.open(templateId)
   }
 
   function handlePreview(pdfPath: string) {
@@ -157,10 +159,7 @@ export function TemplatesList() {
           </div>
 
           <Button
-            onClick={() => {
-              setActiveTemplateId(null)
-              setActiveTab('studio')
-            }}
+            onClick={() => studioGuard.open(null)}
             className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs h-8"
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
@@ -357,6 +356,16 @@ export function TemplatesList() {
           </table>
         </div>
       )}
+
+      {/* Unsaved Studio Draft Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(studioGuard.pending)}
+        title="Unsaved Changes"
+        message={`Discard unsaved changes to ${studioGuard.draftName.trim() ? `"${studioGuard.draftName.trim()}"` : 'the new template'}?`}
+        confirmLabel="Discard"
+        onConfirm={studioGuard.confirm}
+        onCancel={studioGuard.cancel}
+      />
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog

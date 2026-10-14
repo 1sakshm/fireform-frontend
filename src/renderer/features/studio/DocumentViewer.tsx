@@ -8,6 +8,7 @@ import {
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
 import { resolvePreviewUrl } from '../../lib/api'
+import { withPdfViewerParams } from '../../lib/utils'
 import type { Template } from '../../types'
 
 interface DocumentViewerProps {
@@ -37,9 +38,12 @@ export function DocumentViewer({
       if (url) {
         setFrameUrl(url)
       } else {
+        // Drop the previous document so a failed load can't leave a stale PDF on screen
+        setFrameUrl('')
         setLoadError(`Unable to preview PDF at path "${path}".`)
       }
     } catch (err: any) {
+      setFrameUrl('')
       setLoadError(err?.message || 'Error loading PDF preview.')
     }
   }
@@ -114,7 +118,7 @@ export function DocumentViewer({
             <iframe
               id="documentPdfFrame"
               title="Template Document PDF Viewer"
-              src={frameUrl}
+              src={withPdfViewerParams(frameUrl)}
               className="w-full h-full border-0 bg-white"
             />
           </div>
