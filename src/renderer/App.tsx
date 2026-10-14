@@ -4,6 +4,7 @@ import {
   FileText,
   History,
   Flame,
+  Settings2,
 } from 'lucide-react'
 import { useStore, selectHasUnsavedWork } from './store'
 import { waitForBackend, fetchTemplates, fetchBackendStatus } from './lib/api'
@@ -13,12 +14,14 @@ import { TemplatesList } from './features/templates-list/TemplatesList'
 import { LoadingScreen } from './components/LoadingScreen'
 import { Submissions } from './features/submissions/Submissions'
 import { PdfPreviewer } from './components/PdfPreviewer'
+import { Settings } from './features/settings/Settings'
 import { cn } from './lib/utils'
 
 const NAV_ITEMS = [
   { id: 'studio', label: 'Studio & Workspace', icon: Layers },
   { id: 'templatesList', label: 'Templates Library', icon: FileText },
   { id: 'submissions', label: 'Submissions & Analytics', icon: History },
+  { id: 'settings', label: 'Settings', icon: Settings2 },
 ]
 
 export function App() {
@@ -172,6 +175,7 @@ export function App() {
           </div>
         )}
         {activeTab === 'pdfPreviewer' && <PdfPreviewer />}
+        {activeTab === 'settings' && <Settings />}
       </main>
     </div>
   )

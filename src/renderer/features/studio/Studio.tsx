@@ -429,9 +429,6 @@ export function Studio() {
             if (sttState === 'recording') stopRecording()
             else startRecording()
           }}
-          availableModels={availableModels}
-          selectedModel={selectedModel}
-          onModelChange={setSelectedModel}
           onFillForm={handleFillForm}
           isFilling={isFilling}
           onOpenWeather={() => setIsWeatherOpen(true)}

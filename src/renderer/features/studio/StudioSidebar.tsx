@@ -48,9 +48,7 @@ interface StudioSidebarProps {
   isRecording: boolean
   isTranscribing: boolean
   onToggleRecording: () => void
-  availableModels: string[]
-  selectedModel: string
-  onModelChange: (model: string) => void
+
   onFillForm: () => void
   isFilling: boolean
   onOpenWeather: () => void
@@ -83,9 +81,6 @@ export function StudioSidebar({
   isRecording,
   isTranscribing,
   onToggleRecording,
-  availableModels,
-  selectedModel,
-  onModelChange,
   onFillForm,
   isFilling,
   onOpenWeather,
@@ -303,17 +298,7 @@ export function StudioSidebar({
                     <MapPin className="w-3 h-3 mr-1 text-emerald-600" />
                     Address
                   </Button>
-                  <select
-                    value={selectedModel}
-                    onChange={e => onModelChange(e.target.value)}
-                    className="h-6 text-[11px] rounded border border-zinc-200 bg-white px-1.5 font-mono text-zinc-700"
-                  >
-                    {availableModels.map(m => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
+
                 </div>
               </div>
             )}
