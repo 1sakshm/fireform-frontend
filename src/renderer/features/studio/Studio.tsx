@@ -219,7 +219,17 @@ export function Studio() {
       const res: any = await makeFillable(path)
       const count = typeof res?.field_count === 'number' ? res.field_count : null
       setUploadedPdfPath(typeof res?.pdf_path === 'string' && res.pdf_path ? res.pdf_path : path)
-      // Drop the original upload's rows; with no fields sent, Register extracts them from the fillable PDF
+      // If the user manually edited fields, confirm before discarding them
+      if (draft.fieldsEdited) {
+        const ok = window.confirm(
+          'You have manually edited fields. AI Schema will replace them with fields extracted from the PDF. Continue?'
+        )
+        if (!ok) {
+          setStatusMessage({ text: 'AI Schema cancelled — your manual fields were kept.', type: 'info' })
+          return
+        }
+      }
+      // Drop rows; Register will extract the schema directly from the fillable PDF
       seedFromApiFields([], false)
       setDraft({ fieldsEdited: false, pdfChanged: true })
       const countText = count !== null ? ` with ${count} field${count === 1 ? '' : 's'} detected` : ''
@@ -301,7 +311,15 @@ export function Studio() {
         if (f.name.trim()) fieldsDict[f.name.trim()] = f.type || 'string'
       })
 
-      // Send fields only when the user edited them (and left some), so the stored schema is kept
+      // If the user edited fields but all entries are blank/removed, reject rather than silently dropping the edit
+      if (draft.fieldsEdited && Object.keys(fieldsDict).length === 0) {
+        setStatusMessage({
+          text: 'All field names are empty. Add at least one field name or undo your changes before saving.',
+          type: 'error',
+        })
+        return
+      }
+      // Send fields only when the user edited them (and left some valid ones), so the stored schema is kept
       const sendFields = draft.fieldsEdited && Object.keys(fieldsDict).length > 0
       const updated = await updateTemplate(activeTemplate.id, {
         name: templateName.trim(),
