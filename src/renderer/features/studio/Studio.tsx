@@ -11,7 +11,7 @@ import {
   updateTemplate,
   makeFillable,
   fetchTemplates,
-  fetchModels,
+
   fillTemplate,
 } from '../../lib/api'
 import { saveLastOutputPath } from '../../lib/storage'
@@ -57,9 +57,7 @@ export function Studio() {
   const setUploadedPdfPath = (path: string | null) => setDraft({ uploadedPdfPath: path })
 
   // Filler state
-  const [availableModels, setAvailableModels] = useState<string[]>(['qwen2.5:3b', 'llama3.2', 'mistral'])
   const selectedModel = useStore(s => s.selectedModel) || 'qwen2.5:3b'
-  const setSelectedModel = useStore(s => s.setSelectedModel)
   const [weatherCoords, setWeatherCoords] = useState<{ lat: number; lon: number } | null>(null)
 
   // Modals & Loaders
@@ -107,19 +105,7 @@ export function Studio() {
     setStatusMessage({ text: `Voice: ${sttStatus}`, type: isError ? 'error' : 'info' })
   }, [sttStatus])
 
-  // Load models on mount
-  useEffect(() => {
-    fetchModels()
-      .then(res => {
-        if (res && res.models && res.models.length > 0) {
-          setAvailableModels(res.models)
-          // Keep the user's pick across tab switches; only apply the default the first time
-          const store = useStore.getState()
-          if (!store.selectedModel) store.setSelectedModel(res.default || res.models[0])
-        }
-      })
-      .catch(() => {})
-  }, [])
+
 
   // Active template from the store; null means "new template" (clean slate)
   const activeTemplate = useMemo(() => {
@@ -135,7 +121,7 @@ export function Studio() {
     const { seededTemplateId } = useStore.getState().studioDraft
     if (activeTemplate && activeTemplate.id !== seededTemplateId) {
       setTemplateName(activeTemplate.name)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setUploadedPdfPath(activeTemplate.pdf_path)
 
       // Seed fields from active template
