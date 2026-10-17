@@ -17,7 +17,8 @@ import {
 import { saveLastOutputPath } from '../../lib/storage'
 import { WeatherModal } from '../weather-forecast/WeatherForecast'
 import { ZipcodeModal } from '../zipcode-resolver/ZipcodeResolver'
-import { DEFAULT_TEMPLATE_DIRECTORY } from '../../lib/constants'
+import { DEFAULT_TEMPLATE_DIRECTORY, MAX_TEMPLATE_PDF_BYTES } from '../../lib/constants'
+import { formatBytes } from '../../lib/utils'
 
 export function Studio() {
   const {
@@ -153,6 +154,13 @@ export function Studio() {
 
   // Handle PDF file selection & upload
   const handleFileSelect = async (file: File) => {
+    if (file.size > MAX_TEMPLATE_PDF_BYTES) {
+      setStatusMessage({
+        text: `${file.name} is ${formatBytes(file.size)}. The maximum template size is ${formatBytes(MAX_TEMPLATE_PDF_BYTES)}.`,
+        type: 'error',
+      })
+      return
+    }
     setSelectedFile(file)
     if (!templateName) {
       setTemplateName(file.name.replace(/\.[^/.]+$/, ''))
