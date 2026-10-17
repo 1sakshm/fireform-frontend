@@ -188,14 +188,12 @@ export async function fetchModels(): Promise<{ models: ModelInfo[]; default: str
 
 export async function pullModel(
   model: string,
-  onProgress: (progress: ModelProgress) => void,
-  signal?: AbortSignal
+  onProgress: (progress: ModelProgress) => void
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/forms/pull`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model }),
-    signal,
   })
   if (!response.ok) {
     const body = await parseJsonResponse(response)

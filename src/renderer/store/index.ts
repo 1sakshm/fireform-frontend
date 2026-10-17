@@ -13,7 +13,7 @@ export interface ModelDownloadState {
 
 export interface AppNotification {
   text: string
-  type: 'success' | 'error' | 'neutral'
+  type: 'success' | 'error'
 }
 
 // Unsaved Studio Builder draft. Memory only (never localStorage) so it survives tab switches.
@@ -59,7 +59,6 @@ interface AppStore {
   studioDraft: StudioDraft
   selectedModel: string
   modelDownload: ModelDownloadState | null
-  downloadController: AbortController | null
   notification: AppNotification | null
 
   setTemplates: (templates: Template[]) => void
@@ -78,7 +77,6 @@ interface AppStore {
   resetStudioDraft: () => void
   setSelectedModel: (model: string) => void
   startModelDownload: (model: string, previousModel: string) => Promise<void>
-  cancelModelDownload: () => void
   clearNotification: () => void
 }
 
@@ -109,7 +107,6 @@ export const useStore = create<AppStore>((set, get) => ({
   // '' until the user picks one or Studio applies the backend default
   selectedModel: '',
   modelDownload: null,
-  downloadController: null,
   notification: null,
 
   setTemplates: (templates) => {
@@ -189,9 +186,7 @@ export const useStore = create<AppStore>((set, get) => ({
   startModelDownload: async (model, previousModel) => {
     if (get().modelDownload?.status === 'downloading') return
 
-    const controller = new AbortController()
     set({
-      downloadController: controller,
       modelDownload: {
         model,
         previousModel,
@@ -208,10 +203,9 @@ export const useStore = create<AppStore>((set, get) => ({
             ? { ...state.modelDownload, progress }
             : state.modelDownload,
         }))
-      }, controller.signal)
+      })
       saveSelectedModel(model)
       set({
-        downloadController: null,
         selectedModel: model,
         modelDownload: {
           model,
@@ -229,10 +223,8 @@ export const useStore = create<AppStore>((set, get) => ({
           : state
       )), 5000)
     } catch (error) {
-      if (controller.signal.aborted) return
       const message = error instanceof Error ? error.message : 'Model download failed.'
       set({
-        downloadController: null,
         modelDownload: {
           model,
           previousModel,
@@ -249,18 +241,6 @@ export const useStore = create<AppStore>((set, get) => ({
           : state
       )), 7000)
     }
-  },
-  cancelModelDownload: () => {
-    const current = get().modelDownload
-    if (!current || current.status !== 'downloading') return
-    const controller = get().downloadController
-    controller?.abort()
-    set({
-      downloadController: null,
-      modelDownload: null,
-      notification: { text: 'Download cancelled', type: 'neutral' },
-    })
-    setTimeout(() => set({ notification: null }), 4000)
   },
   clearNotification: () => set({ notification: null }),
 }))
