@@ -178,22 +178,24 @@ export async function listModels(): Promise<ModelsResponse> {
   return body as ModelsResponse
 }
 
-export async function fetchModels(): Promise<{ models: string[]; default: string }> {
+export async function fetchModels(): Promise<{ models: ModelInfo[]; default: string }> {
   const data = await listModels()
   return {
-    models: data.models.map(model => model.name),
+    models: data.models,
     default: data.current_model,
   }
 }
 
 export async function pullModel(
   model: string,
-  onProgress: (progress: ModelProgress) => void
+  onProgress: (progress: ModelProgress) => void,
+  signal?: AbortSignal
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/forms/pull`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model }),
+    signal,
   })
   if (!response.ok) {
     const body = await parseJsonResponse(response)
@@ -244,7 +246,14 @@ export async function fillTemplate(payload: {
   })
   const body = await parseJsonResponse(response)
   if (!response.ok) {
-    if (response.status === 422) throw new Error('Model not installed')
+    if (
+      response.status === 422 &&
+      body &&
+      typeof body === 'object' &&
+      (body as Record<string, unknown>)['error_code'] === 'MODEL_NOT_INSTALLED'
+    ) {
+      throw new Error('Model is not installed. Open Settings to download it.')
+    }
     throw new Error(extractErrorMessage(body, response.status))
   }
   return body as Record<string, unknown>

@@ -54,6 +54,8 @@ export function ModelSelector({ value, onChange, onBusyChange }: ModelSelectorPr
       await pullModel(model, event => setProgress(event))
       const refreshed = await listModels()
       setModels(refreshed.models)
+      setSelectedModel(model)
+      onChange(model)
       saveSelectedModel(model)
     } catch (error) {
       setSelectedModel(previous)
@@ -71,10 +73,12 @@ export function ModelSelector({ value, onChange, onBusyChange }: ModelSelectorPr
     if (!selected) return
 
     setError('')
-    setSelectedModel(model)
-    onChange(model)
     if (selected.installed) {
+      setSelectedModel(model)
+      onChange(model)
       saveSelectedModel(model)
+    } else {
+      setSelectedModel(model)
     }
   }
 
@@ -114,7 +118,7 @@ export function ModelSelector({ value, onChange, onBusyChange }: ModelSelectorPr
           <button
             type="button"
             className="secondary-btn"
-            onClick={() => void downloadModel(selectedInfo.name, selectedModel)}
+            onClick={() => void downloadModel(selectedInfo.name, value)}
           >
             Download {selectedInfo.name}
           </button>

@@ -1,6 +1,20 @@
 import { create } from 'zustand'
 import type { FieldRow, Template } from '../types'
-import { loadTemplates, saveTemplates, loadLastOutputPath } from '../lib/storage'
+import { pullModel, type ModelProgress } from '../lib/api'
+import { loadTemplates, saveTemplates, loadLastOutputPath, saveSelectedModel } from '../lib/storage'
+
+export interface ModelDownloadState {
+  model: string
+  previousModel: string
+  status: 'downloading' | 'success' | 'error'
+  progress: ModelProgress | null
+  error: string
+}
+
+export interface AppNotification {
+  text: string
+  type: 'success' | 'error' | 'neutral'
+}
 
 // Unsaved Studio Builder draft. Memory only (never localStorage) so it survives tab switches.
 export interface StudioDraft {
@@ -44,6 +58,9 @@ interface AppStore {
   narrativeDirty: boolean
   studioDraft: StudioDraft
   selectedModel: string
+  modelDownload: ModelDownloadState | null
+  downloadController: AbortController | null
+  notification: AppNotification | null
 
   setTemplates: (templates: Template[]) => void
   upsertTemplate: (template: Template) => void
@@ -60,6 +77,9 @@ interface AppStore {
   setStudioFieldRows: (rows: FieldRow[] | ((prev: FieldRow[]) => FieldRow[])) => void
   resetStudioDraft: () => void
   setSelectedModel: (model: string) => void
+  startModelDownload: (model: string, previousModel: string) => Promise<void>
+  cancelModelDownload: () => void
+  clearNotification: () => void
 }
 
 // Unsaved changes compared with the saved template (or anything entered for a new one)
@@ -88,6 +108,9 @@ export const useStore = create<AppStore>((set, get) => ({
   studioDraft: EMPTY_STUDIO_DRAFT,
   // '' until the user picks one or Studio applies the backend default
   selectedModel: '',
+  modelDownload: null,
+  downloadController: null,
+  notification: null,
 
   setTemplates: (templates) => {
     saveTemplates(templates)
@@ -163,4 +186,81 @@ export const useStore = create<AppStore>((set, get) => ({
   // Discard the draft; keeps the Builder/Filler mode the user is in
   resetStudioDraft: () => set(state => ({ studioDraft: { ...EMPTY_STUDIO_DRAFT, mode: state.studioDraft.mode } })),
   setSelectedModel: (selectedModel) => set({ selectedModel }),
+  startModelDownload: async (model, previousModel) => {
+    if (get().modelDownload?.status === 'downloading') return
+
+    const controller = new AbortController()
+    set({
+      downloadController: controller,
+      modelDownload: {
+        model,
+        previousModel,
+        status: 'downloading',
+        progress: null,
+        error: '',
+      },
+    })
+
+    try {
+      await pullModel(model, progress => {
+        set(state => ({
+          modelDownload: state.modelDownload
+            ? { ...state.modelDownload, progress }
+            : state.modelDownload,
+        }))
+      }, controller.signal)
+      saveSelectedModel(model)
+      set({
+        downloadController: null,
+        selectedModel: model,
+        modelDownload: {
+          model,
+          previousModel,
+          status: 'success',
+          progress: { status: 'success' },
+          error: '',
+        },
+        notification: { text: `${model} installed`, type: 'success' },
+      })
+      setTimeout(() => set({ notification: null }), 5000)
+      setTimeout(() => set(state => (
+        state.modelDownload?.model === model && state.modelDownload.status === 'success'
+          ? { modelDownload: null }
+          : state
+      )), 5000)
+    } catch (error) {
+      if (controller.signal.aborted) return
+      const message = error instanceof Error ? error.message : 'Model download failed.'
+      set({
+        downloadController: null,
+        modelDownload: {
+          model,
+          previousModel,
+          status: 'error',
+          progress: null,
+          error: message,
+        },
+        notification: { text: message, type: 'error' },
+      })
+      setTimeout(() => set({ notification: null }), 7000)
+      setTimeout(() => set(state => (
+        state.modelDownload?.model === model && state.modelDownload.status === 'error'
+          ? { modelDownload: null }
+          : state
+      )), 7000)
+    }
+  },
+  cancelModelDownload: () => {
+    const current = get().modelDownload
+    if (!current || current.status !== 'downloading') return
+    const controller = get().downloadController
+    controller?.abort()
+    set({
+      downloadController: null,
+      modelDownload: null,
+      notification: { text: 'Download cancelled', type: 'neutral' },
+    })
+    setTimeout(() => set({ notification: null }), 4000)
+  },
+  clearNotification: () => set({ notification: null }),
 }))
